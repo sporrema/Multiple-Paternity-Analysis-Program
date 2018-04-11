@@ -1,0 +1,163 @@
+---
+title: "FMM"
+author: "Megan Sporre"
+date: "March 5, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+paternal<-read.csv("kichler_paternal.csv")
+paternal[is.na(paternal)]=0 #change any columns with no value (NA) to 0
+MP<-apply(paternal[,grep("pat", names(paternal))],1,function(x) 1*any(x>2)) #list of broods with more than 2 paternal alleles at any given locus
+MP
+Mult.Pat<-as.data.frame(cbind.data.frame(paternal$Brood_ID, MP))#create data frame of all broods
+colnames(Mult.Pat)<- c("Brood_ID", "MP") #rename columns of data frame
+
+
+
+Pm<- sum(Mult.Pat$MP)/length(Mult.Pat$MP)
+Pm #proportion of broods with multiple paternity
+
+#calculate
+max_palleles<-apply(paternal[,grep("pat_",names(paternal))],1,FUN=max)
+min_sires<-max_palleles/2
+F<-as.data.frame(cbind.data.frame(paternal$Brood_ID, ceiling(min_sires)))
+colnames(F)<- c("Brood_ID", "F") #may need just single column
+F
+
+
+
+
+#DETERMINE ALLELE FREQUENICUES FOR ALL LOCI FROM MATERNAL AND OFFSPRING ALLELES
+maternal<-read.csv("kichler_maternal.csv")
+maternal
+offspring<-read.csv("kichler_offspring.csv")
+offspring
+
+rawalleles<-rbind(maternal,offspring[,-3])
+nloc=((dim(rawalleles)[2]-2)/2)
+lst=vector("list",nloc)
+for (i in 0:(nloc-1))
+{
+  print(2+((2*i)+1):((2*i)+2)) #printing the column numbers that function is using
+temp=rawalleles[,2+((2*i)+1):((2*i)+2)]
+tb1<-unlist(temp)
+tb1=tb1[tb1!=""]
+tbl<-table(tb1)
+tbl=tbl[tbl>0]
+lst[[i+1]]=data.frame(frq=tbl/sum(tbl))
+}
+lst
+
+
+mgenos<-maternal[,-c(1:2)]
+
+
+```
+```{r}
+af<-read.csv("loci.csv")
+af
+sk<-read.csv("skew.csv")
+sk
+
+freqs = list(data.frame(frq=rep(0.1,10)),
+                    data.frame(frq=rep(0.1,10)),
+                    data.frame(frq=rep(0.2,5)))
+freqs
+af
+lst
+```
+
+```{r}
+af=lst
+
+sires<- with(F, rep(Brood_ID, times = F))
+sire_genotypes<-data.frame(sires)
+sire_genotypes[,colnames(maternal[,-c(1:2)])]=NA
+sire_genotypes
+?sample
+for (i in 1:nrow(sire_genotypes))
+  for (j in 2:ncol(sire_genotypes))
+    sire_genotypes[i,j]<-sample(1:dim(af),1,prob=af[,2])
+
+onelocpseudo=function(F,af) #generate male genotypes based on known allele frequencies
+  {genos=data.frame(a1=rep(-1,F),a2=rep(-1,F))
+  for(i in 1:F)
+      {genos[i,1]=sample(1:dim(af)[1],1,prob=af[,1])
+        genos[i,2]=sample(1:dim(af)[1],1,prob=af[,1])
+      }
+      genos}
+
+
+pseudobrood<-function(F,freqs) #create a ragged list object (freqs) where each element is a 1-column df with rows representing alleles and elements in the column representing frequencies
+{
+  lst<-lapply(freqs,function(f)
+   {
+    onelocpseudo(F,f)
+    })
+  allgenos=do.call(cbind,lst)
+  allgenos
+}
+
+
+choose_sire<-function(sk,genos) #for each offspring within a pseudobrood, probabalistically select a sire based on mean paternal skew (may be able to simulate skew later on)
+{
+  genos[sample(1:dim(genos)[1],1,prob=sk[,1]),]
+}
+
+reproduce<-function(mgeno,F,sk,freqs) #randomly assign one allele from each mother and selected father to at each loci for each brood
+{
+  ogeno<-rep(-1,length(mgeno))
+  fgenos<-pseudobrood(F,freqs)
+  print("tish far")
+  fgeno<-choose_sire(sk,fgenos)
+  numloc=length(mgeno)/2
+  for(i in 0:(numloc-1))
+  {
+    mloc=mgeno[(2*i+1):(2*i+2)]#choose one allele from col 1+2 and 3+4, etc
+    floc=fgeno[(2*i+1):(2*i+2)]#choose one allele from col 1+2 and 3+4, etc
+    mallele=sample(mloc,1)
+    fallele=sample(floc,1)
+    oloc=c(mallele,fallele)
+    ogeno[(2*i+1):(2*i+2)]=oloc
+  }
+  ogeno
+}
+reproduce(mgenos,F,sk,freqs)
+
+```
+```{r}
+#determine Pm and Pr(Pm|fmm)
+
+palleles<-apply(example[, seq(2,ncol(example),2)], 2, function(x)length(unique(x)))#create vector for number of paternal alleles at each locus for each brood
+palleles
+
+MP_pseudo<-apply(palleles[, seq(2,ncol(example),2)],2,function(x) 1*x>2) #list of broods with more than 2 paternal alleles at any given locus
+
+
+
+Pm_pseudo<- sum(MP_pseudo)/length(MP_pseudo)
+Pm-Pseudo #proportion of broods with multiple paternity
+
+```
+
+MP<-apply(genetics[,grep("Paternal", names(genetics))],1,function(x) 1*any(x>2)) #list of broods with more than 2 paternal alleles at any given locus
+Mult.Pat<-as.data.frame(cbind(genetics$Nest_.,MP)) #create data frame of all broods
+colnames(Mult.Pat)<- c("Brood #", "Detection of Multiple paternity") #rename columns of data frame
+Mult.Pat
+
+
+Pm<- sum(Mult.Pat$`Detection of Multiple paternity`)/length(Mult.Pat$`Detection of Multiple paternity`)
+Pm #proportion of broods with multiple paternity
+
+#calculate minimum number of sires for each brood
+max_pat_alleles<-apply(genetics[,grep("Paternal",names(genetics))],1,FUN=max)
+max_pat_alleles
+min_sires<-max_pat_alleles/2
+F<-as.data.frame(cbind(genetics$Nest_.,ceiling(min_sires)))
+colnames(F)<- c("Brood", "Minimum.Number.of.Sires") #may need just single column
+F
