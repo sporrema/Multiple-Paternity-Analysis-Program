@@ -10,7 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-paternal<-read.csv("kichler_paternal.csv")
+paternal<-read.csv("../Data/kichler_paternal.csv")
 paternal[is.na(paternal)]=0 #change any columns with no value (NA) to 0
 MP<-apply(paternal[,grep("pat", names(paternal))],1,function(x) 1*any(x>2)) #list of broods with more than 2 paternal alleles at any given locus
 MP
@@ -33,9 +33,9 @@ F
 
 
 #DETERMINE ALLELE FREQUENICUES FOR ALL LOCI FROM MATERNAL AND OFFSPRING ALLELES
-maternal<-read.csv("kichler_maternal.csv")
+maternal<-read.csv("../Data/kichler_maternal.csv")
 maternal
-offspring<-read.csv("kichler_offspring.csv")
+offspring<-read.csv("../Data/kichler_offspring.csv")
 offspring
 
 rawalleles<-rbind(maternal,offspring[,-3])
@@ -59,16 +59,14 @@ mgenos<-maternal[,-c(1:2)]
 
 ```
 ```{r}
-af<-read.csv("loci.csv")
-af
-sk<-read.csv("skew.csv")
+
+sk<-read.csv("../Data/skew.csv")
 sk
 
 freqs = list(data.frame(frq=rep(0.1,10)),
                     data.frame(frq=rep(0.1,10)),
                     data.frame(frq=rep(0.2,5)))
 freqs
-af
 lst
 ```
 
@@ -78,12 +76,19 @@ af=lst
 sires<- with(F, rep(Brood_ID, times = F))
 sire_genotypes<-data.frame(sires)
 sire_genotypes[,colnames(maternal[,-c(1:2)])]=NA
+sire_genotypes[,c(2:3)]=sample(af[[1]][,1],length(sires),prob=af[[1]][,2],replace = T)
+sire_genotypes[,c(4:5)]=sample(af[[2]][,1],length(sires),prob=af[[2]][,2],replace = T)
+sire_genotypes[,c(6:7)]=sample(af[[3]][,1],length(sires),prob=af[[3]][,2],replace = T)
 sire_genotypes
 ?sample
 for (i in 1:nrow(sire_genotypes))
   for (j in 2:ncol(sire_genotypes))
     sire_genotypes[i,j]<-sample(1:dim(af),1,prob=af[,2])
 
+sample(af[[1]][,1],82,prob=af[[1]][,2],replace=T)
+
+```
+```{r}
 onelocpseudo=function(F,af) #generate male genotypes based on known allele frequencies
   {genos=data.frame(a1=rep(-1,F),a2=rep(-1,F))
   for(i in 1:F)
@@ -130,6 +135,7 @@ reproduce<-function(mgeno,F,sk,freqs) #randomly assign one allele from each moth
 reproduce(mgenos,F,sk,freqs)
 
 ```
+
 ```{r}
 #determine Pm and Pr(Pm|fmm)
 
