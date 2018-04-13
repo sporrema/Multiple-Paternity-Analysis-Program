@@ -10,57 +10,56 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-paternal<-read.csv("../Data/kichler_paternal.csv")
-paternal[is.na(paternal)]=0 #change any columns with no value (NA) to 0
-MP<-apply(paternal[,grep("pat", names(paternal))],1,function(x) 1*any(x>2)) #list of broods with more than 2 paternal alleles at any given locus
-MP
-Mult.Pat<-as.data.frame(cbind.data.frame(paternal$Brood_ID, MP))#create data frame of all broods
-colnames(Mult.Pat)<- c("Brood_ID", "MP") #rename columns of data frame
+paternal <- read.csv("../Data/kichler_paternal.csv")
+paternal[is.na(paternal)] = 0         #change any columns with no value (NA) to 0
+MP <- apply(paternal[ ,grep("pat", names(paternal))], 1, function(x) 1*any(x>2))      #list of broods with more than 2 paternal alleles at any given locus
+Mult.Pat <- as.data.frame(cbind.data.frame(paternal$Brood_ID, MP))            #create data frame of all broods
+colnames(Mult.Pat) <- c("Brood_ID", "MP")         #rename columns of data frame
 
 
 
-Pm<- sum(Mult.Pat$MP)/length(Mult.Pat$MP)
-Pm #proportion of broods with multiple paternity
+Pm <- sum(Mult.Pat$MP) / length(Mult.Pat$MP)
+Pm #observed proportion of broods with multiple paternity
 
 #calculate minimum number of sires for each brood
-max_palleles<-apply(paternal[,grep("pat_",names(paternal))],1,FUN=max)
-min_sires<-max_palleles/2
-F<-as.data.frame(cbind.data.frame(paternal$Brood_ID, ceiling(min_sires)))
-colnames(F)<- c("Brood_ID", "F") #may need just single column
+max_palleles <- apply(paternal[ ,grep("pat_",names(paternal))], 1, FUN=max)
+min_sires <- max_palleles / 2
+F <- as.data.frame(cbind.data.frame(paternal$Brood_ID, ceiling(min_sires)))    #create data frame that 
+colnames(F) <- c("Brood_ID", "F") 
 F
 
 
 
 
 #DETERMINE ALLELE FREQUENICUES FOR ALL LOCI FROM MATERNAL AND OFFSPRING ALLELES
-maternal<-read.csv("../Data/kichler_maternal.csv",as.is=T)
+maternal <- read.csv("../Data/kichler_maternal.csv", as.is = T)
 maternal
-offspring<-read.csv("../Data/kichler_offspring.csv",as.is=T)
+offspring <- read.csv("../Data/kichler_offspring.csv", as.is = T)
 offspring
 
-rawalleles<-rbind(maternal,offspring[,-3])
-nloc=((dim(rawalleles)[2]-2)/2)
-lst=vector("list",nloc)
-for (i in 0:(nloc-1))
+rawalleles <- rbind(maternal, offspring[ ,-3])
+nloc = ((dim(rawalleles)[2]-2) / 2)
+lst = vector("list", nloc)
+for (i in 0:(nloc - 1))
 {
   print(2+((2*i)+1):((2*i)+2)) #printing the column numbers that function is using
-temp=rawalleles[,2+((2*i)+1):((2*i)+2)]
-tb1<-unlist(temp)
-tb1=tb1[tb1!=""]
-tbl<-table(tb1)
-tbl=tbl[tbl>0]
-lst[[i+1]]=data.frame(frq=tbl/sum(tbl))
+temp = rawalleles[ ,2+((2*i)+1):((2*i)+2)]
+tb1 <- unlist(temp)
+tb1 = tb1[tb1!=""]
+tbl <- table(tb1)
+tbl = tbl[tbl>0]
+lst[[i+1]] = data.frame(frq = tbl / sum(tbl))
 }
 lst
 
 
-mgenos<-maternal[,-c(1:2)]
+mgenos <- maternal[,-c(1:2)]
 
 
 ```
 ```{r}
 #Read in skew data - for know is a known prior may be able to incorporate calculating it at a later date
-sk<-read.csv("../Data/skew.csv")
+sk <- read.csv("../Data/skew.csv")
 sk
 
 ```
@@ -68,52 +67,52 @@ sk
 ```{r}
 
 #rename lst as af (allele frequencies)
-af=lst
+af = lst
 
 # for each of B broods, generate genotypes for F sires based on population allele frequencies
-sires<- with(F, rep(Brood_ID, times = F))
-sire_genotypes<-data.frame(sires)
-sire_genotypes[,colnames(maternal[,-c(1:2)])]=NA
-for (i in 0:(nloc-1))
-  sire_genotypes[,1+((2*i)+1):((2*i)+2)]=sample(af[[i+1]][,1],2*length(sires),prob =af[[i+1]][,2],replace=T )
+sires <- with(F, rep(Brood_ID, times = F))
+sire_genotypes <- data.frame(sires)
+sire_genotypes[ ,colnames(maternal[ ,-c(1:2)])] = NA
+for (i in 0:(nloc - 1))
+  sire_genotypes[ ,1+((2*i)+1):((2*i)+2)] = sample(af[[i+1]][ ,1] ,2*length(sires), prob = af[[i+1]][ ,2], replace = T )
 sire_genotypes
 
 
 ```
 ```{r}
 #create a data frame of offspring per brood
-Cb<-data.frame(table(offspring$Brood_ID))
-names(Cb)=c("Brood_ID","Cb")
+Cb <- data.frame(table(offspring$Brood_ID))
+names(Cb) = c("Brood_ID", "Cb")
 Cb
 ```
 ```{r}
 
-pseudo_broods=NULL
+pseudo_broods = NULL
 for (b in Cb$Brood_ID)
 {
-  sires1=sire_genotypes[sire_genotypes$sires==b,]
-  rn=dim(sires1)[1]
+  sires1 = sire_genotypes[sire_genotypes$sires == b, ]
+  rn = dim(sires1)[1]
   
-  maternal1=maternal[maternal$Brood_ID==b,]
+  maternal1 = maternal[maternal$Brood_ID == b, ]
   #print(Cb$Cb[Cb$Brood_ID==b])
-    for (r in 1:Cb$Cb[Cb$Brood_ID==b])
+    for (r in 1:Cb$Cb[Cb$Brood_ID == b])
   {
     
-       if (rn>1)
-    {sirerow=sample(1:dim(sires1)[1],1,prob = sk[,1])} else 
-    {sirerow=1}
-      pseudo_ogeno<-rep(-1,dim(maternal1)[2]-2)
-      for (i in 0:(nloc-1))
+       if (rn > 1)
+    {sirerow = sample(1:dim(sires1)[1], 1, prob = sk[ ,1])} else 
+    {sirerow = 1}
+      pseudo_ogeno <- rep(-1, dim(maternal1)[2]-2)
+      for (i in 0:(nloc - 1))
       {
-        mloc=maternal1[,2+(2*i+1):(2*i+2)]
-        ploc=sires1[sirerow,1+(2*i+1):(2*i+2)]
-        mallele=unlist(sample(mloc,1))
-        pallele=unlist(sample(ploc,1))
-        oloc=as.numeric(c(mallele,pallele))
-        pseudo_ogeno[(2*i+1):(2*i+2)]=oloc
+        mloc = maternal1[ ,2+(2*i+1):(2*i+2)]
+        ploc = sires1[sirerow, 1+(2*i+1):(2*i+2)]
+        mallele = unlist(sample(mloc, 1))
+        pallele = unlist(sample(ploc, 1))
+        oloc = as.numeric(c(mallele, pallele))
+        pseudo_ogeno[(2*i+1):(2*i+2)] = oloc
       }
-      pseudo_broods=rbind(pseudo_broods,
-                          data.frame(Brood_ID=b,matrix(pseudo_ogeno,nrow=1)))
+      pseudo_broods = rbind(pseudo_broods,
+                          data.frame(Brood_ID = b , matrix(pseudo_ogeno, nrow = 1)))
   #print(b)
      #print(r) 
   #print(sires1[sirerow,"sires"])
@@ -126,14 +125,11 @@ for (b in Cb$Brood_ID)
 ```{r}
 #determine Pm and Pr(Pm|fmm)
 library(dplyr)
-allele_counts<-pseudo_broods%>%group_by(Brood_ID)%>%summarise_all(.funs=function(x){length(unique(x))})
+allele_counts <- pseudo_broods%>%group_by(Brood_ID)%>%summarise_all(.funs=function(x){length(unique(x))})
 
-palleles<-allele_counts[,as.logical((1:dim(allele_counts)[2])%%2)]#create vector for number of paternal alleles at each locus for each brood
-palleles
+palleles <- allele_counts[ ,as.logical((1:dim(allele_counts)[2])%%2)]    #create vector for number of paternal alleles at each locus for each brood
 
-MP_pseudo<-apply(palleles[,-1],1,function(x) as.numeric(sum(x>2)>0))
-
-apply(palleles[, seq(2,ncol(pseudo_broods),2)],2,function(x) 1*x>2) #list of broods with more than 2 paternal alleles at any given locus
+MP_pseudo <- apply(palleles[ ,-1], 1, function(x) as.numeric(sum(x>2)>0))    #list of broods with more than 2 paternal alleles at any given locus
 
 
 
